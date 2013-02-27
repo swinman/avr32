@@ -52,7 +52,7 @@ def makeCFGFile(word, filename="ispcfg.bin"):
 
 def getCRC8(word3):
     """
-    calculate one byte checksum (sum values and modulo 256)
+    calculate one byte cyclic redundancy check
 
     C(x) = x^8 + x^2 + x^1 + x^0 == 1 0 0 0 0 0 1 1 1
 
