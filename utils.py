@@ -194,7 +194,7 @@ def makeHex(binfile="userpage.bin", hexfile="userpage.hex", cols=16):
     lines = [":020000048080FA"]
     for k in range((512+cols-1)//cols):
         values = [cols, (k*cols)//256, (k*cols)%256, recordtype]
-        line = [":{0:0>2X}{1:0>4X}{2:0>2X}".format(*values)]
+        line = [":{0:0>2X}{1:0>2X}{2:0>2X}{3:0>2X}".format(*values)]
         for i in range(cols):
             value = ord(page[i+k*cols])
             values.append(value)
@@ -210,7 +210,7 @@ def makeHex(binfile="userpage.bin", hexfile="userpage.hex", cols=16):
     with open(hexfile, 'wb') as fh:
         fh.write("\n".join(lines))
 
-def makeHex(binfile="userpage.bin", hexfile="userpage.hex"):
+def makeBin(binfile="userpage.bin", hexfile="userpage.hex"):
     """
     make a binary file from an intel hex file
     """
