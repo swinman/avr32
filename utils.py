@@ -1,4 +1,4 @@
-"""
+""""
 PYTHON WRAPPER FUNCTIONS FOR PROGRAMMING AVR
 ---------------------------------------
 provide a set of tools to help program avr32 - specifically at32uc3b1512 
@@ -12,20 +12,24 @@ from __future__ import unicode_literals
 from future_builtins import (ascii, filter, hex, map, oct, zip)
 
 import logging as log
+import sys
+import os
 from subprocess import call
+import time
 
-def parseCFGword(filename="ispcfg.bin",display=True):
+
+def parseCFGword(filename="ispcfg.bin", display=True):
     """
     shows information about the config file and returns the word as bytes
     """
-    with open(filename,'rb') as fh:
+    with open(filename, 'rb') as fh:
         data = fh.read()
     values = [ord(c) for c in data]
     if display:
         word = ["{0:0>2X}".format(v) for v in values]
         print("WORD is: 0x {0} {1} {2} {3}".format(*word))
         pin = values[2]
-        val = values[1]%2
+        val = values[1] % 2
         print("IO Condition: Pin {0} {1}".format(pin, "High" if val else "Low"))
     return(values)
 
@@ -51,7 +55,7 @@ def makeCFGFile(word, filename="ispcfg.bin"):
     """
     word should be a list with 4 int (byte) values
     """
-    with open(filename, 'wb') as fh:
+    with open(filename, "wb") as fh:
         fh.write(bytearray(word))
 
 def getCRC8(word3):
@@ -66,7 +70,7 @@ def getCRC8(word3):
     // (c) Kay Gorontzi, GHSi.de, distributed under the terms of LGPL
     // ========================================================================
     """
-    crc = [0,0,0,0,0,0,0,0]
+    crc = [0, 0, 0, 0, 0, 0, 0, 0]
     binstr = [int(b) for b in list("{0:b}".format(word3))]
     for v in binstr:
         doinvert = v ^ crc[7]
@@ -81,7 +85,7 @@ def getCRC8(word3):
     return sum([c*2**i for i, c in enumerate(crc)])
 
 def commandhelp():
-    command = ["avr32program","help","commands"]
+    command = ["avr32program", "help", "commands"]
     call(command)
 
 def optionshelp():
@@ -93,16 +97,21 @@ def getStatus():
     call(command)
 
 def cpuinfo(full=False):
+    """
+    returns information about the cpu
+    """
     command = ["avr32program", "cpuinfo"]
-    if full: command.append("-F")
+    if full: 
+        command.append("-F")
     call(command)
 
 def chiperase(full=False):
     """
     call a chiperase
     """
-    command = ["avr32program","chiperase"]
-    if full: command.append("-F")
+    command = ["avr32program", "chiperase"]
+    if full: 
+        command.append("-F")
     call(command)
 
 def flashBootloader(filename="at32uc3b-isp-1.0.3.bin"):
@@ -112,6 +121,7 @@ def flashBootloader(filename="at32uc3b-isp-1.0.3.bin"):
     command = ["avr32program", "program",
             "-Fbin",
             "-O0x80000000",
+#            "-s512000",
             "-v",
             "-finternal@0x80000000",
             "-e",
@@ -139,8 +149,15 @@ def writefuses(fuses='0xFC07FFFF'):
     write the fuses word provided
     """
     command = ["avr32program", "writefuses",
-            "-f internal@0x80000000", 
-            fuses]
+            "-finternal@0x80000000", 
+            "gp={0}".format(fuses)]
+    call(command)
+
+def runprogram():
+    """
+    start the application
+    """
+    command = ["avr32program", "run", "-R"]
     call(command)
 
 def readfuses():
@@ -148,6 +165,25 @@ def readfuses():
             "-f internal@0x80000000",
             "gp"]
     call(command)
+
+def reloadBootloader():
+    """
+    use this to run each command in series
+    """
+    print("********************* C H I P   E R A S E *********************")
+    chiperase()
+    time.sleep(1.5)
+    print("********************* B O O T L O A D E R *********************")
+    flashBootloader()
+    time.sleep(1.5)
+    print("********************* C O N F I G U R A T I O N *********************")
+    flashCFGword()
+    time.sleep(1.5)
+    print("********************* F U S E S *********************")
+    writefuses()
+    time.sleep(1.5)
+    print("********************* R U N   P R O G *********************")
+    runprogram()
 
 def lsusb(grep="03eb"):
     """
