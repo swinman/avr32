@@ -18,6 +18,38 @@ from subprocess import call
 import time
 
 
+def reloadBootloader():
+    """
+    use this to perform all necessary steps for reprogramming the bootloader
+    """
+    print("********************* C H I P   E R A S E *********************")
+    chiperase()
+    time.sleep(1.5)
+    print("********************* B O O T L O A D E R *********************")
+    flashBootloader()
+    time.sleep(1.5)
+    print("********************* C O N F I G U R A T I O N *********************")
+    flashCFGword()
+    time.sleep(1.5)
+    print("********************* F U S E S *********************")
+    writefuses()
+    time.sleep(1.5)
+    print("********************* R U N   P R O G *********************")
+    runprogram()
+
+def programBatchisp(filename):
+    """
+    program a file using the batchisp tool
+    """
+    command = ["batchisp",
+            "-device", "at32uc3b1512",
+            "-hardware", "usb",
+            "-operation", 
+            "erase", "f", "memory", "flash", "blankcheck",
+            "loadbuffer", filename, "program", "verify",
+            "start", "reset", "0"]
+    call(command)
+
 def parseCFGword(filename="ispcfg.bin", display=True):
     """
     shows information about the config file and returns the word as bytes
@@ -165,25 +197,6 @@ def readfuses():
             "-f internal@0x80000000",
             "gp"]
     call(command)
-
-def reloadBootloader():
-    """
-    use this to run each command in series
-    """
-    print("********************* C H I P   E R A S E *********************")
-    chiperase()
-    time.sleep(1.5)
-    print("********************* B O O T L O A D E R *********************")
-    flashBootloader()
-    time.sleep(1.5)
-    print("********************* C O N F I G U R A T I O N *********************")
-    flashCFGword()
-    time.sleep(1.5)
-    print("********************* F U S E S *********************")
-    writefuses()
-    time.sleep(1.5)
-    print("********************* R U N   P R O G *********************")
-    runprogram()
 
 def lsusb(grep="03eb"):
     """
