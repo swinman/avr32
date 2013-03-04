@@ -202,7 +202,7 @@ def lsusb(grep="03eb"):
     """
     doesn't work
     """
-    command = ["lsusb", "|", "grep", grep]
+    command = ["lsusb"]
     call(command)
 
 def viewuser(filename="userpage.bin", cols=16):
