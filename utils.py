@@ -230,39 +230,86 @@ def makeUser(word, filename='userpage.bin'):
     with open(filename, 'wb') as fh:
         fh.write(page)
 
-def makeHex(binfile="userpage.bin", hexfile="userpage.hex", cols=16):
+def makehexuser(binfile="userpage.bin", hexfile="userpage.hex"):
+    """
+    make an intel hex file from a binary image of the userpage
+    sets the memory offset to 0x80800000
+    """
+    makehex(binfile, hexfile, offset=0x80800000)
+
+def makehex(binfile="program.bin", hexfile=None, offset=0x80000000, cols=16):
     """
     make an intel hex file from a binary
-    assumes 16 bytes per field - don't use 32
     see wikipedia page for translation
+    start is the starting address in memory
+    cols is either 16 or 32, if hexfile is not provided same file name is used
+    with .hex extension instead of binary
     """
+    if hexfile is None:
+        hexfile = '.'.join([os.path.splitext(binfile)[0], "hex"])
     with open(binfile, 'rb') as fh:
         page = fh.read()
-    if len(page) != 512: log.warn("User page should be 512 bytes")
-    recordtype = 0          # 0-5, 0 is data
-    lines = [":020000048080FA"]
-    for k in range((512+cols-1)//cols):
-        values = [cols, (k*cols)//256, (k*cols)%256, recordtype]
-        line = [":{0:0>2X}{1:0>2X}{2:0>2X}{3:0>2X}".format(*values)]
-        for i in range(cols):
-            value = ord(page[i+k*cols])
-            values.append(value)
-            line.append("{0:0>2X}".format(value))
-#        checksum = (((sum(values) & 0xFF) ^ 0xFF) + 0x01) & 0xFF
-        checksum = (0x100 - (sum(values) % 0x100)) & 0xFF
-#        thecheck = (sum(values) + checksum) & 0xFF
-#        if thecheck > 0:
-#            raise ValueError ("you fucked up on line {0}".format(k))
-        line.append("{0:0>2X}".format(checksum))
-        lines.append("".join(line))
+    lines = [_ihex_make04offset(offset)]
+    reladdress = offset
+    offsetaddress = offset
+    values = [0, 0, 0]
+    nremain = cols
+    for k, v in enumerate(page):
+        reladdress = k + offset
+        if reladdress - offsetaddress == 0x10000:
+            # finish the current line
+            lines.append( _ihex_makeline(values) )
+            values = [0, 0, 0]
+            nremain = cols
+            # start new offset
+            offsetaddress = reladdress
+            lines.append( _ihex_make04offset(offsetaddress) )
+        if nremain == 0:
+            lines.append( _ihex_makeline(values) )
+            values = [(0xFF & ((reladdress - offsetaddress) >> 8)), 
+                    (0xFF & (reladdress - offsetaddress)), 0]
+            nremain = cols
+        values.append( ord(v) )
+        nremain -= 1
+    if len(values) > 3: lines.append( _ihex_makeline(values) )
     lines.append(":00000001FF")
     with open(hexfile, 'wb') as fh:
         fh.write("\n".join(lines))
+
+def _ihex_make04offset(offset):
+    """
+    use to create an ihex offset
+    """
+    if offset % 0x10000:
+        raise ValueError ("offset must")
+    values = [0, 0, 4]
+    values.append(0xFF & (offset>>24))
+    values.append(0xFF & (offset>>16))
+    return _ihex_makeline(values)
+
+def _ihex_makeline(values):
+    """
+    values are the 2 address bytes, the record type and any values
+    append a checksum and prepend number of bytes
+    return an ihex formatted line from a list of values
+    """
+    lendata = len(values) - 3
+    try:
+        checksum = (0x100 - ((sum(values) + lendata) % 0x100)) & 0xFF
+    except TypeError:
+        print(values)
+    values.append(checksum)
+    line = [ ":{0:0>2X}".format(lendata) ]
+    for v in values:
+        line.append( "{0:0>2X}".format(v) )
+    return( "".join(line) )
 
 def makeBin(binfile="userpage.bin", hexfile="userpage.hex"):
     """
     make a binary file from an intel hex file
     """
+    # if the entire data is continuous, make 1 file, list address start loc.
+    # if multiple blocks exist in hex, make multiple files each w/ offset.
     pass
 
 
