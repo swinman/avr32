@@ -273,7 +273,8 @@ def makehex(binfile="program.bin", hexfile=None, offset=0x80000000, cols=16):
         nremain -= 1
     if len(values) > 3: lines.append( _ihex_makeline(values) )
     lines.append(":00000001FF")
-    with open(hexfile, 'wb') as fh:
+# FIXME : for some reason i'm getting an error with line endings using DFU-prog.
+    with open(hexfile, 'w') as fh:
         fh.write("\n".join(lines))
 
 def _ihex_make04offset(offset):
