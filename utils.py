@@ -65,24 +65,6 @@ def parseCFGword(filename="ispcfg.bin", display=True):
         print("IO Condition: Pin {0} {1}".format(pin, "High" if val else "Low"))
     return(values)
 
-def makeCFGWord(pin=5, pinhigh=False):
-    """
-    make the cfg word, including a checksum based on a certain pin number and
-    pin condition 
-    returns the word as a list with 4 byte values
-    """
-    magic = 0x494F
-    pval = 1 if pinhigh else 0
-    word3 = ((magic<<17) + (pval<<16) + (pin<<8))>>8
-    print ("First 3 bytes: 0x{0:0>6X}".format(word3))
-    crc8 = getCRC8(word3)
-    print ("Checksum (CRC8): 0x{0:0>2X}".format(crc8))
-    word = (word3<<8) + crc8
-    whex = "{0:0>8X}".format(word)
-    print ("Word is: 0x{0}".format(whex))
-    wvals = [int(whex[2 * i : 2 * i + 2], 16) for i in range(4)]
-    return wvals
-
 def makeCFGFile(word, filename="ispcfg.bin"):
     """
     word should be a list with 4 int (byte) values
@@ -218,24 +200,52 @@ def viewuser(filename="userpage.bin", cols=16):
             print ("{0:0>2X} ".format(ord(page[i+k*cols])), end="")
         print("")
 
-def makeUser(word, filename='userpage.bin'):
+def makeuser(serialnumber="", pin=5, pinhigh=False, filename='userpage'):
     """
     puts the value for word in the last 4 bytes of the 512 byte user page
+    puts the value for the serial number in the first x bytes of the user page
+    filename.bin and filename.hex will be created.
     """
-    page = bytearray([0xFF]*512)
+    # init the page
+    page = bytearray([0xFF] * 512)
+
+    # add the serial number
+    for i, c in enumerate(list(serialnumber)):
+        page[i] = c
+    if len(serialnumber):
+        page[i+1] = 0
+
+    # add bootloader configuration word
+    word = _makeCFGWord(pin, pinhigh)
     revword = list(word)
     revword.reverse()
     for i, b in enumerate(revword):
-        page[-1-i] = b
-    with open(filename, 'wb') as fh:
+        page[-1 - i] = b
+
+    binfn = ".".join([filename, "bin"])
+    hexfn = ".".join([filename, "hex"])
+
+    with open(binfn, 'wb') as fh:
         fh.write(page)
 
-def makehexuser(binfile="userpage.bin", hexfile="userpage.hex"):
+    makehex(binfn, hexfn, 0x80800000)
+
+def _makeCFGWord(pin=5, pinhigh=False):
+    """ make the cfg word, including a checksum based on a certain pin number and
+    pin condition 
+    returns the word as a list with 4 byte values
     """
-    make an intel hex file from a binary image of the userpage
-    sets the memory offset to 0x80800000
-    """
-    makehex(binfile, hexfile, offset=0x80800000)
+    magic = 0x494F
+    pval = 1 if pinhigh else 0
+    word3 = ((magic<<17) + (pval<<16) + (pin<<8))>>8
+    print ("First 3 bytes: 0x{0:0>6X}".format(word3))
+    crc8 = getCRC8(word3)
+    print ("Checksum (CRC8): 0x{0:0>2X}".format(crc8))
+    word = (word3<<8) + crc8
+    whex = "{0:0>8X}".format(word)
+    print ("Word is: 0x{0}".format(whex))
+    wvals = [int(whex[2 * i : 2 * i + 2], 16) for i in range(4)]
+    return wvals
 
 def makehex(binfile="program.bin", hexfile=None, offset=0x80000000, cols=16):
     """
@@ -272,7 +282,7 @@ def makehex(binfile="program.bin", hexfile=None, offset=0x80000000, cols=16):
         values.append( ord(v) )
         nremain -= 1
     if len(values) > 3: lines.append( _ihex_makeline(values) )
-    lines.append(":00000001FF")
+    lines.append(":00000001FF\n")
 # FIXME : for some reason i'm getting an error with line endings using DFU-prog.
     with open(hexfile, 'w') as fh:
         fh.write("\n".join(lines))
