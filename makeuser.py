@@ -41,11 +41,12 @@ def makeuser(serialnumber="", pin=5, pinhigh=False, filename='userpage'):
         page[i+1] = 0
 
     # add bootloader configuration word
-    word = _makeCFGWord(pin, pinhigh)
-    revword = list(word)
-    revword.reverse()
-    for i, b in enumerate(revword):
-        page[-1 - i] = b
+    if pin is not None:
+        word = _makeCFGWord(pin, pinhigh)
+        revword = list(word)
+        revword.reverse()
+        for i, b in enumerate(revword):
+            page[-1 - i] = b
 
     binfn = ".".join([filename, "bin"])
     hexfn = ".".join([filename, "hex"])
@@ -117,10 +118,64 @@ def _getCRC8(word3):
         crc[0] = doinvert
     return sum([c*2**i for i, c in enumerate(crc)])
 
+def parseargs(args):
+    """
+    parse argument options -b, -sn, -p, -f
+    """
+    b = False
+    sn = ""
+    p = 5
+    phigh = False
+    fn = "userpage"
+
+    if args[0] == "-b":
+        if len(args) == 1:
+            return(True, sn, None, phigh, fn)
+        elif len(args) == 3 and args[1] == '-f':
+            return(True, sn, p, phigh, args[2])
+        else: 
+            return(False, 0,0,0,0)
+
+    while (len(args)):
+        if args[0] == '-sn':
+            args, sn = _checkname(args)
+        elif args[0] == '-p':
+            args, p, phigh = _checkpin(args)
+        elif args[0] == '-f':
+            args, fn = _checkname(args)
+        else:
+            return (False, 0,0,0,0)
+    return (True, sn, p, phigh, fn)
+
+def _checkname(args):
+    if len(args) > 1:
+        return (args[2:], args[1])
+    else:
+        return (['X'],None)
+
+def _checkpin(args):
+    if len(args) == 1:
+        return(['X'], None, None)
+    elif args[1] == '-h' and len(args)>2:
+        return(args[3:], int(args[2]), True)
+    else:
+        return(args[2:], int(args[1]), False)
+
+def printcommands():
+    print("arg options, must use one:")
+    print("\t-sn {serial number} : specify serial number")
+    print("\t-p [-h] {pin} : specify pin, optional set high (default low)")
+    print("\t-b : for blank userpage")
+    print("\t-f {filename} : specify filename - noextension")
+
 
 if __name__=="__main__":
     log.basicConfig(level=log.DEBUG)
     if len(sys.argv) > 1:
-        serialnumber = sys.argv[1]
-        print("Creating user page with serial number: {0}".format(serialnumber))
-        makeuser(serialnumber)
+        success, sn, pin, high, fn = parseargs(sys.argv[1:])
+        if success:
+            makeuser(sn, pin, high, fn)
+        else: 
+            printcommands()
+    else:
+        printcommands()
