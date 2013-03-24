@@ -80,10 +80,83 @@ def _ihex_makeline(values):
         line.append( "{0:0>2X}".format(v) )
     return( "".join(line) )
 
+def parseargs(args):
+    """
+    parse argument options 
+    $ makehex [optional args] {binary filename}
+    optional args include: 
+        -h {filename} : specify the hex file to create, default bin name
+        -o {offset} : specify an offset, default 0x80000000
+        -c {columns} : specify number of columns, default 16
+    """
+    if not len(args):
+        return(False, 0,0,0,0)
+
+    binfile = args[-1]
+    if not os.path.exists(binfile):
+        print ("binary file {0} does not exist".format(binfile))
+        return(False, 0,0,0,0)
+    args = args[:-1]
+
+    hexfile = None
+    offset = 0x80000000
+    cols = 16
+
+    while (len(args)):
+        if args[0] == '-h':
+            args, hexfile = _checkname(args)
+        elif args[0] == '-o':
+            args, offset = _checkoffset(args)
+        elif args[0] == '-c':
+            args, cols = _checkcols(args)
+        else:
+            return (False, 0,0,0,0)
+    return (True, binfile, hexfile, offset, cols)
+
+
+def _checkname(args):
+    if len(args) > 1:
+        hexfile = args[1]
+#TODO : check that the path is a valid path.. how?
+        return (args[2:], hexfile)
+    else:
+        return(['X'], None)
+
+def _checkoffset(args):
+    if len(args) > 1:
+        offset = int(args[1])
+        if offset < 0:
+            print("offset must be positive")
+            return(['X'], None)
+        return(args[2:], offset)
+    else:
+        return(['X'], None)
+
+def _checkcols(args):
+    if len(args) > 1:
+        cols = int(args[1])
+        if not ((cols == 16) or (cols == 32)):
+            print("cols must be 16 or 32")
+            return(['X'], None)
+        return(args[2:], cols)
+    else:
+        return(['X'], None)
+
+def printcommands():
+    print("makehex [optional args] {binary filename}")
+    print("arg format options:")
+    print("\t-h {filename} : specify the hex file to create, default bin name")
+    print("\t-o {offset} : specify an offset, default 0x80000000")
+    print("\t-c {columns} : specify number of columns, default 16")
+
 
 if __name__=="__main__":
     log.basicConfig(level=log.DEBUG)
-    sys.argv
-
-
-
+    if len(sys.argv) > 1:
+        success, binfile, hexfile, offset, cols = parseargs(sys.argv[1:])
+        if success:
+            makehex(binfile, hexfile, offset, cols)
+        else: 
+            printcommands()
+    else:
+        printcommands()
