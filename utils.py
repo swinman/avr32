@@ -158,9 +158,30 @@ def flashCFGword(filename="ispcfg.bin"):
     value = parseCFGword(filename)
     call(command)
 
-def writefuses(fuses='0xFC07FFFF'):
+def flashuser(filename="userpage.hex"):
+    command = ["avr32program", "program",
+            "-Fhex",
+            "-O0x80800000",
+            "-v",
+            "-finternal@0x80000000",
+            "-e",
+            "-cxtal",
+            filename]
+    call(command)
+
+def writefuses(fuses='0x8C07FFFF'):
     """
-    write the fuses word provided
+    write the fuses with the provided word
+
+    15:0 LOCK - flash region lock bits
+    16 EPFL - external privileged fetch lock
+    19:17 BOOTPROT - set size of bootloader protect area
+    25:20 BODLEVEL - brown-out detector trigger level - high = higher level
+    26 BODHYST - 1 enables BOD hysteresis
+    28:27 BODEN - hardware BOD enable state
+    29 ISP_BOD_EN - 1 tells the ISP to enable BOD in software
+    30 ISP_IO_COND_EN - 1 tells boot process to use ISP config in user page
+    31 ISP_FORCE - 1 tells the boot process to start the USB DFU ISP always
     """
     command = ["avr32program", "writefuses",
             "-finternal@0x80000000", 
