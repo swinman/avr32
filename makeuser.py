@@ -6,7 +6,7 @@ a nice way to use this is to create an alias
 alias makeuser="python ~/software/avr32/makeuser.py"
 
 so that using this tool from the command lines is
-$ makeuser 1010-1234-5115-SERIALNUMBER
+$ makeuser -sn 1010-1234-5115-SERIALNUMBER
 
 """
 
@@ -25,12 +25,16 @@ from avr32.makehex import makehex
 # TODO : implement arg parse for -sn, -pin, -phigh, -fn, -bin
 
 
-def makeuser(serialnumber="", pin=5, pinhigh=False, filename='userpage'):
+def makeuser(serialnumber="", pin=5, pinhigh=False, filename=None):
     """
     puts the value for word in the last 4 bytes of the 512 byte user page
     puts the value for the serial number in the first x bytes of the user page
     filename.bin and filename.hex will be created.
     """
+    # make a filename if not provided
+    if filename is None:
+        filename = serialnumber if serialnumber != "" else "userpage"
+
     # init the page
     page = bytearray([0xFF] * 512)
 
@@ -126,13 +130,14 @@ def parseargs(args):
     sn = ""
     p = 5
     phigh = False
-    fn = "userpage"
+    fn = None
 
     if args[0] == "-b":
         if len(args) == 1:
             return(True, sn, None, phigh, fn)
         elif len(args) == 3 and args[1] == '-f':
-            return(True, sn, p, phigh, args[2])
+            fn = args[2]
+            return(True, sn, p, phigh, fn)
         else: 
             return(False, 0,0,0,0)
 
