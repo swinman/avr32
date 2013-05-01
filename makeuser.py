@@ -25,7 +25,7 @@ from avr32.makehex import makehex
 # TODO : implement arg parse for -sn, -pin, -phigh, -fn, -bin
 
 
-def makeuser(serialnumber="", pin=5, pinhigh=False, filename=None):
+def makeuser(serialnum="", pin=5, pinhigh=False, filename=None, keepbin=False):
     """
     puts the value for word in the last 4 bytes of the 512 byte user page
     puts the value for the serial number in the first x bytes of the user page
@@ -33,15 +33,15 @@ def makeuser(serialnumber="", pin=5, pinhigh=False, filename=None):
     """
     # make a filename if not provided
     if filename is None:
-        filename = serialnumber if serialnumber != "" else "userpage"
+        filename = serialnum if serialnum != "" else "userpage"
 
     # init the page
     page = bytearray([0xFF] * 512)
 
     # add the serial number
-    for i, c in enumerate(list(serialnumber)):
+    for i, c in enumerate(list(serialnum)):
         page[i] = c
-    if len(serialnumber):
+    if len(serialnum):
         page[i+1] = 0
 
     # add bootloader configuration word
@@ -60,13 +60,12 @@ def makeuser(serialnumber="", pin=5, pinhigh=False, filename=None):
 
     makehex(binfn, hexfn, 0x80800000)
 
-    keepbin = False
     if not keepbin:
         os.remove(binfn)
 
 def _makeCFGWord(pin=5, pinhigh=False):
     """ make the cfg word, including a checksum based on a certain pin number and
-    pin condition 
+    pin condition
     returns the word as a list with 4 byte values
     """
     magic = 0x494F
@@ -124,22 +123,23 @@ def _getCRC8(word3):
 
 def parseargs(args):
     """
-    parse argument options -b, -sn, -p, -f
+    parse argument options -b, -sn, -p, -f, -kb
     """
     b = False
     sn = ""
     p = 5
     phigh = False
     fn = None
+    keepbin = False
 
     if args[0] == "-b":
         if len(args) == 1:
-            return(True, sn, None, phigh, fn)
+            return(True, sn, None, phigh, fn, keepbin)
         elif len(args) == 3 and args[1] == '-f':
             fn = args[2]
             return(True, sn, p, phigh, fn)
-        else: 
-            return(False, 0,0,0,0)
+        else:
+            return(False, 0,0,0,0,0)
 
     while (len(args)):
         if args[0] == '-sn':
@@ -148,9 +148,12 @@ def parseargs(args):
             args, p, phigh = _checkpin(args)
         elif args[0] == '-f':
             args, fn = _checkname(args)
+        elif args[0] == '-kb':
+            args = args[1:]
+            keepbin = True
         else:
-            return (False, 0,0,0,0)
-    return (True, sn, p, phigh, fn)
+            return (False, 0,0,0,0,0)
+    return (True, sn, p, phigh, fn, keepbin)
 
 def _checkname(args):
     if len(args) > 1:
@@ -161,7 +164,7 @@ def _checkname(args):
 def _checkpin(args):
     if len(args) == 1:
         return(['X'], None, None)
-    elif args[1] == '-h' and len(args)>2:
+    elif args[1] == '-h' and len(args) > 2:
         return(args[3:], int(args[2]), True)
     else:
         return(args[2:], int(args[1]), False)
@@ -172,15 +175,16 @@ def printcommands():
     print("\t-p [-h] {pin} : specify pin, optional set high (default low)")
     print("\t-b : for blank userpage")
     print("\t-f {filename} : specify filename - noextension")
+    print("\t-kb : specify to keep binary intermediate")
 
 
 if __name__=="__main__":
     log.basicConfig(level=log.DEBUG)
     if len(sys.argv) > 1:
-        success, sn, pin, high, fn = parseargs(sys.argv[1:])
+        success, sn, pin, high, fn, keepbin = parseargs(sys.argv[1:])
         if success:
-            makeuser(sn, pin, high, fn)
-        else: 
+            makeuser(sn, pin, high, fn, keepbin)
+        else:
             printcommands()
     else:
         printcommands()
