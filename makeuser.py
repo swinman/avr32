@@ -8,6 +8,11 @@ alias makeuser="python ~/software/avr32/makeuser.py"
 so that using this tool from the command lines is
 $ makeuser -sn 1010-1234-5115-SERIALNUMBER
 
+--- NOTE ---
+the AT32UC3Bxxx comes shipped with a bootloader running. if you launch
+out of the bootloader it can be accessed by shorting pin A13 to ground.
+this pin is the joystick on the EVK1101 and SCK on the sensor board
+
 """
 
 from __future__ import print_function
@@ -30,6 +35,8 @@ def makeuser(serialnum="", pin=5, pinhigh=False, filename=None, keepbin=False):
     puts the value for word in the last 4 bytes of the 512 byte user page
     puts the value for the serial number in the first x bytes of the user page
     filename.bin and filename.hex will be created.
+
+    the default (shipped) value for the boot select pin is 0x0D (pin A13)
     """
     # make a filename if not provided
     if filename is None:
