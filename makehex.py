@@ -25,10 +25,18 @@ def makehex(binfile="program.bin", hexfile=None, offset=0x80000000, cols=16):
         hexfile = '.'.join([os.path.splitext(binfile)[0], "hex"])
     with open(binfile, 'rb') as fh:
         page = fh.read()
-    lines = [_ihex_make04offset(offset)]
-    reladdress = offset
-    offsetaddress = offset
-    values = [0, 0, 0]
+
+    offset = int(offset)
+
+    if offset % 0x10000:
+        remainder = offset % 0x10000
+        offsetaddress = offset - remainder
+        values = [(0xFF & ((remainder) >> 8)),
+                    (0xFF & (remainder)), 0]
+    else:
+        offsetaddress = offset
+        values = [0, 0, 0]
+    lines = [_ihex_make04offset(int(offsetaddress))]
     nremain = cols
     for k, v in enumerate(page):
         reladdress = k + offset
@@ -42,7 +50,7 @@ def makehex(binfile="program.bin", hexfile=None, offset=0x80000000, cols=16):
             lines.append( _ihex_make04offset(offsetaddress) )
         if nremain == 0:
             lines.append( _ihex_makeline(values) )
-            values = [(0xFF & ((reladdress - offsetaddress) >> 8)), 
+            values = [(0xFF & ((reladdress - offsetaddress) >> 8)),
                     (0xFF & (reladdress - offsetaddress)), 0]
             nremain = cols
         values.append( ord(v) )
@@ -57,7 +65,7 @@ def _ihex_make04offset(offset):
     use to create an ihex offset
     """
     if offset % 0x10000:
-        raise ValueError ("offset must")
+        raise ValueError ("offset must be a multiple of 0x10000")
     values = [0, 0, 4]
     values.append(0xFF & (offset>>24))
     values.append(0xFF & (offset>>16))
@@ -82,9 +90,9 @@ def _ihex_makeline(values):
 
 def parseargs(args):
     """
-    parse argument options 
+    parse argument options
     $ makehex [optional args] {binary filename}
-    optional args include: 
+    optional args include:
         -h {filename} : specify the hex file to create, default bin name
         -o {offset} : specify an offset, default 0x80000000
         -c {columns} : specify number of columns, default 16
@@ -124,7 +132,7 @@ def _checkname(args):
 
 def _checkoffset(args):
     if len(args) > 1:
-        offset = int(args[1])
+        offset = int(args[1], base=16)
         if offset < 0:
             print("offset must be positive")
             return(['X'], None)
@@ -156,7 +164,7 @@ if __name__=="__main__":
         success, binfile, hexfile, offset, cols = parseargs(sys.argv[1:])
         if success:
             makehex(binfile, hexfile, offset, cols)
-        else: 
+        else:
             printcommands()
     else:
         printcommands()
