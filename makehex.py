@@ -13,7 +13,8 @@ import sys
 import os
 
 
-def makehex(binfile="program.bin", hexfile=None, offset=0x80000000, cols=16):
+def makehex(binfile="program.bin", hexfile=None, offset=0x80000000, cols=16,
+        prepend_size = False):
     """
     make an intel hex file from a binary
     see wikipedia page for translation
@@ -37,9 +38,22 @@ def makehex(binfile="program.bin", hexfile=None, offset=0x80000000, cols=16):
         offsetaddress = offset
         values = [0, 0, 0]
     lines = [_ihex_make04offset(int(offsetaddress))]
+
     nremain = cols
+
+    if prepend_size:
+        size = len(page)
+        """ prepend 4 bytes for bin size """
+        values.append ( 0xFF & (size >> 24))
+        values.append ( 0xFF & (size >> 16))
+        values.append ( 0xFF & (size >> 8))
+        values.append ( 0xFF & size )
+        nremain -= 4
+
     for k, v in enumerate(page):
         reladdress = k + offset
+        if prepend_size:
+            reladdress += 4
         if reladdress - offsetaddress == 0x10000:
             # finish the current line
             lines.append( _ihex_makeline(values) )
@@ -96,6 +110,7 @@ def parseargs(args):
         -h {filename} : specify the hex file to create, default bin name
         -o {offset} : specify an offset, default 0x80000000
         -c {columns} : specify number of columns, default 16
+        -p : if set, hex will be prepended with a 4 byte size specifier
     """
     if not len(args):
         return(False, 0,0,0,0)
@@ -109,6 +124,7 @@ def parseargs(args):
     hexfile = None
     offset = 0x80000000
     cols = 16
+    prepend_size = False
 
     while (len(args)):
         if args[0] == '-h':
@@ -117,9 +133,12 @@ def parseargs(args):
             args, offset = _checkoffset(args)
         elif args[0] == '-c':
             args, cols = _checkcols(args)
+        elif args[0] == '-p':
+            prepend_size = True
+            args = args[1:]
         else:
             return (False, 0,0,0,0)
-    return (True, binfile, hexfile, offset, cols)
+    return (True, binfile, hexfile, offset, cols, prepend_size)
 
 
 def _checkname(args):
@@ -156,14 +175,15 @@ def printcommands():
     print("\t-h {filename} : specify the hex file to create, default bin name")
     print("\t-o {offset} : specify an offset, default 0x80000000")
     print("\t-c {columns} : specify number of columns, default 16")
+    print("\t-p : if set, hex will be prepended with a 4-byte specifier")
 
 
 if __name__=="__main__":
     log.basicConfig(level=log.DEBUG)
     if len(sys.argv) > 1:
-        success, binfile, hexfile, offset, cols = parseargs(sys.argv[1:])
+        success, binfile, hexfile, offset, cols, prepend_size = parseargs(sys.argv[1:])
         if success:
-            makehex(binfile, hexfile, offset, cols)
+            makehex(binfile, hexfile, offset, cols, prepend_size)
         else:
             printcommands()
     else:
